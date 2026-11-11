@@ -1,0 +1,8 @@
+# rules_lean is a library module: its consumers resolve dependencies, so no
+# lockfile is kept here.
+common --lockfile_mode=off
+
+test --test_output=errors
+
+# Local, untracked settings (e.g. startup flags for a corporate truststore).
+try-import %workspace%/user.bazelrc
