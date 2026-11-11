@@ -98,8 +98,9 @@ rules_lean from a separate module, the way a consumer does.
 
 ```mermaid
 flowchart LR
-    src["Foo/Bar.lean"] -->|"lean --setup"| olean["Foo/Bar.olean"]
-    src -->|"lean -c"| c["Foo/Bar.c"]
+    src["Foo/Bar.lean"] --> lean(["one lean action"])
+    lean --> olean["Foo/Bar.olean"]
+    lean --> c["Foo/Bar.c"]
     c -->|"leanc -c"| obj["Foo/Bar.o"]
     olean -->|"imported by"| next["modules that import Foo.Bar"]
     olean --> proof["lean_proof_test: sorry and axiom check"]
