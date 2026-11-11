@@ -3,8 +3,8 @@
 Archives are always fetched from Lean's own release hosts, never re-hosted
 (the release bundles LGPL components; see README "Licensing").
 
-To add a version, take the asset names and `sha256:` digests from
-`gh api repos/leanprover/lean4/releases/tags/v<VERSION> --jq '.assets[]'`.
+To add a version, see CONTRIBUTING.md ("Adding a Lean version"): asset names
+and sha256 digests come from the GitHub release API's `digest` field.
 """
 
 DEFAULT_LEAN_VERSION = "4.35.0"

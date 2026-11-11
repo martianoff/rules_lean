@@ -1,4 +1,7 @@
-"""Public API of rules_lean."""
+"""Public API of rules_lean.
+
+    load("@rules_lean//lean:defs.bzl", "lean_binary", "lean_library", "lean_proof_test", "lean_test")
+"""
 
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load(
@@ -16,21 +19,28 @@ lean_library = _lean_library
 lean_test = _lean_test
 
 def lean_proof_test(name, deps, allowed_axioms = None, modules = None, allow_empty = False, **kwargs):
-    """Fails unless every declaration in the checked modules is free of `sorry`
-    and depends only on allowed axioms (default: propext, Quot.sound,
-    Classical.choice — Lean's standard axioms).
+    """A test that fails unless proofs are complete and use only allowed axioms.
 
-    Lean only warns about `sorry` when compiling, so a lean_library builds
-    even with holes in its proofs. This test is what makes a proof count.
+    Lean only warns about `sorry` when it compiles a module, so a
+    `lean_library` with holes in its proofs still builds. This test is what
+    makes a proof count: every declaration of the checked modules must be free
+    of `sorry` (`sorryAx`) and depend only on allowed axioms. On failure the
+    output names each offending declaration and the axioms it uses.
+
+    The check runs when the test is built, so `bazel build //...` already
+    fails on a bad proof; `bazel test` reports it as a failed test.
 
     Args:
-      name: test name.
-      deps: lean_library targets whose modules are checked.
-      allowed_axioms: axiom names allowed in addition to nothing else.
-      modules: module names to check; default is every module compiled
-        directly by deps.
-      allow_empty: do not fail when the modules declare nothing.
-      **kwargs: passed to the test (tags, size, visibility, ...).
+      name: Name of the test.
+      deps: `lean_library` targets whose modules are checked.
+      allowed_axioms: Axiom names declarations may depend on. Default:
+        Lean's standard axioms `propext`, `Quot.sound` and `Classical.choice`.
+        Pass `[]` to allow none.
+      modules: Module names to check. Default: every module compiled
+        directly by `deps` (not their transitive deps).
+      allow_empty: Pass when the checked modules may declare nothing;
+        otherwise an empty check fails, as it usually means a wrong `modules`.
+      **kwargs: Common test attributes (`tags`, `size`, `visibility`, ...).
     """
     check_kwargs = {}
     if allowed_axioms != None:
