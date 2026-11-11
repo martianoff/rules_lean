@@ -1,0 +1,23 @@
+"""Uses rules_lean the way a consumer does: from another module.
+
+The Bazel Central Registry runs this module against every release
+(see .bcr/presubmit.yml).
+"""
+
+module(name = "rules_lean_e2e_smoke")
+
+bazel_dep(name = "rules_lean", version = "0.0.0")
+local_path_override(
+    module_name = "rules_lean",
+    path = "../..",
+)
+
+# A second, non-root module that also uses rules_lean and calls lean.toolchain.
+bazel_dep(name = "greeting", version = "0.0.0")
+local_path_override(
+    module_name = "greeting",
+    path = "../greeting",
+)
+
+lean = use_extension("@rules_lean//lean:extensions.bzl", "lean")
+lean.toolchain(version = "4.35.0")

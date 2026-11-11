@@ -1,0 +1,28 @@
+load("@rules_lean//lean:defs.bzl", "lean_binary", "lean_library", "lean_proof_test", "lean_test")
+
+lean_library(
+    name = "smoke",
+    srcs = [
+        "Smoke/Lemmas.lean",
+        "Smoke/Main.lean",
+    ],
+    deps = ["@greeting"],
+)
+
+lean_proof_test(
+    name = "smoke_proofs",
+    deps = [
+        ":smoke",
+        "@greeting",
+    ],
+)
+
+lean_binary(
+    name = "smoke_bin",
+    deps = [":smoke"],
+)
+
+lean_test(
+    name = "smoke_test",
+    deps = [":smoke"],
+)

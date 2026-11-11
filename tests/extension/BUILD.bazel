@@ -1,0 +1,3 @@
+load(":select_version_test.bzl", "select_version_test_suite")
+
+select_version_test_suite(name = "select_version_test")
