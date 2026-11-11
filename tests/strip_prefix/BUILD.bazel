@@ -1,0 +1,25 @@
+load("//lean:defs.bzl", "lean_library", "lean_proof_test", "lean_test")
+
+# src/Strip/Foo.lean is module Strip.Foo, not src.Strip.Foo.
+lean_library(
+    name = "foo",
+    srcs = ["src/Strip/Foo.lean"],
+    strip_prefix = "src",
+)
+
+lean_proof_test(
+    name = "foo_proofs",
+    deps = [":foo"],
+    modules = ["Strip.Foo"],
+)
+
+lean_library(
+    name = "use",
+    srcs = ["Use.lean"],
+    deps = [":foo"],
+)
+
+lean_test(
+    name = "use_test",
+    deps = [":use"],
+)

@@ -1,0 +1,7 @@
+load("//lean:defs.bzl", "lean_library")
+
+lean_library(
+    name = "base",
+    srcs = ["Chain/Base.lean"],
+    visibility = ["//tests/chain:__subpackages__"],
+)

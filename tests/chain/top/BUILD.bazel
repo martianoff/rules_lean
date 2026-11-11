@@ -1,0 +1,13 @@
+load("//lean:defs.bzl", "lean_library", "lean_test")
+
+# base <- mid <- top across three packages; top imports base transitively.
+lean_library(
+    name = "top",
+    srcs = ["Chain/Top.lean"],
+    deps = ["//tests/chain/mid"],
+)
+
+lean_test(
+    name = "chain_test",
+    deps = [":top"],
+)
