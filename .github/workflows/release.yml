@@ -1,6 +1,10 @@
 # Cut a release when a tag vX.Y.Z is pushed: test, build the source archive and
-# API docs, attest them, draft a GitHub release, open the BCR pull request, then
-# publish the release.
+# API docs, attest them, and publish a GitHub release with the archive and its
+# attestation.
+#
+# Publishing to the Bazel Central Registry is opt-in: it runs only when the
+# repository secret BCR_PUBLISH_TOKEN exists (see publish.yml). Until then,
+# releases are served by the GALA registry (github.com/martianoff/rules-gala).
 #
 # The archive is `git archive` of the tag: rules_lean sources only. Lean
 # archives are never part of a release (see README "Licensing").
@@ -30,13 +34,30 @@ jobs:
       release_files: |
         rules_lean-*.tar.gz
       prerelease: false
-      # Drafted so attestations can be attached before it is published
-      # (immutable releases); `finalize` publishes it.
+      # Drafted so the BCR step can attach its attestations before the
+      # release becomes immutable; `finalize` publishes it.
       draft: true
       tag_name: ${{ inputs.tag_name || github.ref_name }}
 
+  bcr-enabled:
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - id: check
+        env:
+          BCR_PUBLISH_TOKEN: ${{ secrets.BCR_PUBLISH_TOKEN }}
+        run: |
+          if [ -n "$BCR_PUBLISH_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "BCR_PUBLISH_TOKEN is not set: skipping the Bazel Central Registry."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
   publish:
-    needs: release
+    needs: [release, bcr-enabled]
+    if: needs.bcr-enabled.outputs.enabled == 'true'
     uses: ./.github/workflows/publish.yml
     with:
       tag_name: ${{ inputs.tag_name || github.ref_name }}
@@ -44,7 +65,9 @@ jobs:
       publish_token: ${{ secrets.BCR_PUBLISH_TOKEN }}
 
   finalize:
-    needs: publish
+    needs: [release, publish]
+    # Runs when the BCR step succeeded or was skipped.
+    if: ${{ !cancelled() && needs.release.result == 'success' && (needs.publish.result == 'success' || needs.publish.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4

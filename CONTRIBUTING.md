@@ -77,20 +77,30 @@ BSD). Today they are `platforms` and `bazel_skylib`, both Apache 2.0.
 
 ## Releasing
 
-Releases are cut by pushing a tag `vX.Y.Z` on `main`:
+1. Set `version` in `MODULE.bazel` to the new version, push, and wait for CI to pass.
+2. Push the tag (only that one): `git tag vX.Y.Z && git push origin vX.Y.Z`.
 
 ```mermaid
 flowchart LR
-    tag["push tag vX.Y.Z"] --> release["release.yml: test, build source archive,<br/>attest, draft GitHub release"]
-    release --> publish["publish.yml: open a PR on the<br/>Bazel Central Registry"]
-    publish --> final["publish the GitHub release"]
-    final --> bcr["BCR CI runs e2e/smoke<br/>(.bcr/presubmit.yml); maintainer<br/>marks the PR ready for review"]
+    tag["push tag vX.Y.Z"] --> release["release.yml: test, source archive,<br/>API docs, attestation"]
+    release --> bcr{"BCR_PUBLISH_TOKEN<br/>secret set?"}
+    bcr -->|yes| publish["publish.yml: draft PR on the<br/>Bazel Central Registry"]
+    bcr -->|no| final["GitHub release published"]
+    publish --> final
+    final --> registry["add the version to the GALA registry<br/>(martianoff/rules-gala)"]
 ```
 
+3. Add the version to the [GALA registry](https://github.com/martianoff/rules-gala)
+   following its `RELEASING.md`: `modules/rules_lean/<version>/` with a copy of the
+   tagged `MODULE.bazel`, a `source.json` pointing at the release asset
+   `rules_lean-vX.Y.Z.tar.gz` (strip prefix `rules_lean-X.Y.Z`, its `sha256-`
+   integrity), and `presubmit.yml` copied from `.bcr/presubmit.yml`; then add the
+   version to `modules/rules_lean/metadata.json`.
+
 - The archive is `git archive` of the tag: sources only, no Lean binaries.
-- [`.bcr/`](.bcr) holds the templates the BCR entry is generated from.
-- One-time setup and the steps for each release are in
-  [`.github/workflows/publish.yml`](.github/workflows/publish.yml).
+- Publishing to the Bazel Central Registry is opt-in. [`.bcr/`](.bcr) holds the
+  templates; [`.github/workflows/publish.yml`](.github/workflows/publish.yml) lists the
+  one-time setup (a registry fork and the `BCR_PUBLISH_TOKEN` secret).
 
 ## Commits
 

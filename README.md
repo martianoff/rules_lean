@@ -28,9 +28,19 @@ everything else.
 
 ## Quick start
 
+rules_lean is published in the [GALA module registry](https://github.com/martianoff/rules-gala)
+(it is not in the Bazel Central Registry yet). Add that registry ahead of the BCR in
+your `.bazelrc`:
+
+```text
+# .bazelrc
+common --registry=https://raw.githubusercontent.com/martianoff/rules-gala/main/
+common --registry=https://bcr.bazel.build
+```
+
 ```starlark
 # MODULE.bazel
-bazel_dep(name = "rules_lean", version = "<version>")
+bazel_dep(name = "rules_lean", version = "0.1.0")
 
 # Optional: pick the Lean version. Without it you get this release's default.
 lean = use_extension("@rules_lean//lean:extensions.bzl", "lean")
@@ -120,9 +130,9 @@ flowchart LR
 
 ## Rules
 
-Load the rules from `@rules_lean//lean:defs.bzl`. The same reference, generated from
-the rules' docstrings, is published with each release on the module's page in the
-[Bazel Central Registry](https://registry.bazel.build).
+Load the rules from `@rules_lean//lean:defs.bzl`. Each release also ships the same
+reference generated from the rules' docstrings (`rules_lean-<tag>.docs.tar.gz`), the
+format the [Bazel Central Registry](https://registry.bazel.build) renders.
 
 ### `lean_library`
 

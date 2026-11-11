@@ -1,6 +1,7 @@
 # Opens a pull request on the Bazel Central Registry for a release.
 #
-# Runs after release.yml; can also be re-run by hand for an existing tag
+# Runs after release.yml when the BCR_PUBLISH_TOKEN secret exists; can also be
+# run by hand for an existing tag
 # (Actions > Publish to BCR > Run workflow).
 #
 # One-time setup by a maintainer:
