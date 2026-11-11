@@ -1,0 +1,53 @@
+# Cut a release when a tag vX.Y.Z is pushed: test, build the source archive and
+# API docs, attest them, draft a GitHub release, open the BCR pull request, then
+# publish the release.
+#
+# The archive is `git archive` of the tag: rules_lean sources only. Lean
+# archives are never part of a release (see README "Licensing").
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Existing tag to release, e.g. v0.1.0
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  attestations: write
+  contents: write
+
+jobs:
+  release:
+    # https://github.com/bazel-contrib/.github/blob/master/.github/workflows/release_ruleset.yaml
+    uses: bazel-contrib/.github/.github/workflows/release_ruleset.yaml@1d798ff015ed0696433e01e2c3ccbb2abefadad7 # v7.7.0
+    with:
+      release_files: |
+        rules_lean-*.tar.gz
+      prerelease: false
+      # Drafted so attestations can be attached before it is published
+      # (immutable releases); `finalize` publishes it.
+      draft: true
+      tag_name: ${{ inputs.tag_name || github.ref_name }}
+
+  publish:
+    needs: release
+    uses: ./.github/workflows/publish.yml
+    with:
+      tag_name: ${{ inputs.tag_name || github.ref_name }}
+    secrets:
+      publish_token: ${{ secrets.BCR_PUBLISH_TOKEN }}
+
+  finalize:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
+        with:
+          tag_name: ${{ inputs.tag_name || github.ref_name }}
+          draft: false

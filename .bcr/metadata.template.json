@@ -1,0 +1,12 @@
+{
+  "homepage": "https://github.com/martianoff/rules_lean",
+  "maintainers": [
+    {
+      "github": "martianoff",
+      "github_user_id": 7222812
+    }
+  ],
+  "repository": ["github:martianoff/rules_lean"],
+  "versions": [],
+  "yanked_versions": {}
+}
