@@ -1,0 +1,33 @@
+load("//lean:defs.bzl", "lean_binary", "lean_library", "lean_proof_test", "lean_test")
+
+lean_library(
+    name = "basic",
+    srcs = ["Demo/Basic.lean"],
+)
+
+lean_library(
+    name = "app",
+    srcs = ["Demo/Main.lean"],
+    deps = [":basic"],
+)
+
+lean_binary(
+    name = "demo",
+    deps = [":app"],
+)
+
+lean_library(
+    name = "test_main",
+    srcs = ["Demo/Test.lean"],
+    deps = [":basic"],
+)
+
+lean_test(
+    name = "demo_test",
+    deps = [":test_main"],
+)
+
+lean_proof_test(
+    name = "proofs",
+    deps = [":basic"],
+)

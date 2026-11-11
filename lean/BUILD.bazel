@@ -1,0 +1,22 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
+package(default_visibility = ["//visibility:public"])
+
+toolchain_type(name = "toolchain_type")
+
+# The execution platform's OS decides whether native binaries get `.exe`.
+config_setting(
+    name = "exec_windows",
+    constraint_values = ["@platforms//os:windows"],
+)
+
+bzl_library(
+    name = "defs",
+    srcs = [
+        "defs.bzl",
+        "extensions.bzl",
+        "toolchain.bzl",
+        "//lean/private:bzl_srcs",
+    ],
+    deps = ["@bazel_skylib//rules:build_test"],
+)

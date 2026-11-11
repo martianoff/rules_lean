@@ -1,0 +1,15 @@
+load("//lean:defs.bzl", "lean_library", "lean_proof_test")
+
+# Must FAIL: `bazel test //tests/negative:holes_proofs` is expected to break
+# the build. CI runs it and asserts the failure (see .github/workflows/ci.yml).
+lean_library(
+    name = "holes",
+    srcs = ["Neg/Holes.lean"],
+    tags = ["manual"],
+)
+
+lean_proof_test(
+    name = "holes_proofs",
+    deps = [":holes"],
+    tags = ["manual"],
+)
