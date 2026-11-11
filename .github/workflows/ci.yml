@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Bazel ${{ matrix.bazel }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04 # linux x86_64
+          - ubuntu-24.04-arm # linux aarch64
+          - macos-15 # darwin aarch64
+          - macos-15-intel # darwin x86_64
+          - windows-2025 # windows x86_64
+        # The oldest supported Bazel, then the newest of each later major.
+        # Keep the oldest in sync with README.md and .bcr/presubmit.yml.
+        bazel: ["7.4.1", "8.x", "9.x"]
+    env:
+      USE_BAZEL_VERSION: ${{ matrix.bazel }}
+      # Keep Git Bash on Windows from rewriting `//pkg:target` labels as paths.
+      MSYS_NO_PATHCONV: "1"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Only for bazelisk; caches and bazelrc are set up below.
+      - uses: bazel-contrib/setup-bazel@f34d6a05eae3c24acab7fa54587492daeaeffdab # 0.19.2
+        with:
+          bazelisk-cache: true
+          repository-cache: false
+
+      - name: Configure Bazel
+        run: |
+          if [ "$RUNNER_OS" = Windows ]; then
+            repo_cache="$(cygpath -m ~/.cache/bazel-repo)"
+            # Short output root on the workspace's drive.
+            user_root="$(cygpath -m "$GITHUB_WORKSPACE" | cut -c1-2)/_b"
+          else
+            repo_cache="$HOME/.cache/bazel-repo"
+            user_root="$HOME/.bazel_out"
+          fi
+          # Overwrites the file setup-bazel wrote: its fixed --output_base would
+          # make this repo and the e2e modules share one output base.
+          cat > ~/.bazelrc <<EOF
+          startup --output_user_root=$user_root
+          common --repository_cache=$repo_cache
+          common --color=yes
+          common --show_progress_rate_limit=30
+          test --test_output=errors
+          EOF
+          cat ~/.bazelrc
+
+      # Lean release archives are ~200-600 MB per platform. Only the
+      # content-addressed downloads are cached (never extracted toolchains),
+      # and only inside GitHub Actions; nothing is published.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/bazel-repo/content_addressable
+          key: bazel-repo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('MODULE.bazel', 'lean/private/versions.bzl') }}
+          restore-keys: bazel-repo-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: bazel test //...
+        run: bazel test //...
+
+      - name: lean_proof_test fails on sorry and non-standard axioms
+        run: |
+          set +e
+          bazel test //tests/negative:holes_proofs > negative.log 2>&1
+          rc=$?
+          set -e
+          cat negative.log
+          if [ "$rc" -eq 0 ]; then
+            echo "::error:://tests/negative:holes_proofs passed but must fail"
+            exit 1
+          fi
+          for want in sorryAx myAxiom; do
+            grep -q "$want" negative.log || { echo "::error::output does not name $want"; exit 1; }
+          done
+
+      - name: e2e/smoke (rules_lean used from another module)
+        working-directory: e2e/smoke
+        run: bazel test //...
+
+      - name: e2e/bad_version fails with a clear error
+        working-directory: e2e/bad_version
+        run: |
+          set +e
+          bazel build //... > bad_version.log 2>&1
+          rc=$?
+          set -e
+          cat bad_version.log
+          if [ "$rc" -eq 0 ]; then
+            echo "::error::e2e/bad_version built but must fail"
+            exit 1
+          fi
+          grep -q 'Lean version "v4.35.0" (requested by module rules_lean_e2e_bad_version) is not known' bad_version.log
+          grep -q 'Drop the leading "v"' bad_version.log
+
+      - name: Shut down Bazel servers
+        if: always()
+        run: |
+          for d in . e2e/smoke e2e/bad_version; do (cd "$d" && bazel shutdown || true); done
+
+  # A stable name for branch protection: passes only if every matrix job did.
+  ci-ok:
+    if: always()
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          if [ "${{ needs.test.result }}" != success ]; then
+            echo "test matrix: ${{ needs.test.result }}"
+            exit 1
+          fi
