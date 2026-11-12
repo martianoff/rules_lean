@@ -177,7 +177,7 @@ and depends only on allowed axioms.
 | `allowed_axioms` | list of strings | `["propext", "Quot.sound", "Classical.choice"]` | Axioms declarations may depend on. `[]` allows none. |
 | `modules` | list of strings | every module compiled directly by `deps` | Module names to check. |
 | `allow_empty` | bool | `False` | Don't fail when the checked modules declare nothing. |
-| `**kwargs` | | | Common test attributes (`tags`, `size`, `visibility`, ...). |
+| `**kwargs` | | | Common test attributes (`tags`, `size`, `visibility`, ...). `tags`, `target_compatible_with`, `exec_compatible_with`, `exec_properties`, `features`, `compatible_with` and `restricted_to` also apply to the check, so a test that is `manual` or incompatible is never checked by `bazel build //...`. |
 
 The check is a build action, so `bazel build //...` already fails on an incomplete
 proof. The error names each offending declaration and what it depends on:

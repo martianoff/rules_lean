@@ -18,6 +18,17 @@ lean_binary = _lean_binary
 lean_library = _lean_library
 lean_test = _lean_test
 
+# Common attributes of lean_proof_test that its check target gets as well.
+_FORWARDED_TO_CHECK = [
+    "compatible_with",
+    "exec_compatible_with",
+    "exec_properties",
+    "features",
+    "restricted_to",
+    "tags",
+    "target_compatible_with",
+]
+
 def lean_proof_test(name, deps, allowed_axioms = None, modules = None, allow_empty = False, **kwargs):
     """A test that fails unless proofs are complete and use only allowed axioms.
 
@@ -41,18 +52,27 @@ def lean_proof_test(name, deps, allowed_axioms = None, modules = None, allow_emp
       allow_empty: Pass when the checked modules may declare nothing;
         otherwise an empty check fails, as it usually means a wrong `modules`.
       **kwargs: Common test attributes (`tags`, `size`, `visibility`, ...).
+        The ones that decide whether and where a target builds (`tags`,
+        `target_compatible_with`, ...) apply to the check as well.
     """
     check_kwargs = {}
     if allowed_axioms != None:
         check_kwargs["allowed_axioms"] = allowed_axioms
     if modules != None:
         check_kwargs["modules"] = modules
+
+    # The check is a target of its own, and `//...` expands to it too. So the
+    # attributes that decide whether and where a target builds must reach it:
+    # otherwise `bazel build //...` builds the check of a test that is tagged
+    # manual or incompatible with the target platform.
+    for attr in _FORWARDED_TO_CHECK:
+        if attr in kwargs:
+            check_kwargs[attr] = kwargs[attr]
     _lean_proof_check(
         name = name + "_check",
         deps = deps,
         allow_empty = allow_empty,
         testonly = True,
-        tags = kwargs.get("tags", []),
         visibility = ["//visibility:private"],
         **check_kwargs
     )

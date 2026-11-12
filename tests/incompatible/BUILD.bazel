@@ -1,0 +1,18 @@
+load("//lean:defs.bzl", "lean_library", "lean_proof_test")
+
+# lean_proof_test's check is a target of its own, and `//...` expands to it.
+# `target_compatible_with` on the test must reach the check, or `bazel test
+# //...` builds the check of a test it skips. The proof below has a hole and the
+# library is compatible (it builds: Lean only warns about sorry), so if the
+# attribute did not reach the check, `bazel test //...` would fail here.
+# Nothing is tagged manual, on purpose.
+lean_library(
+    name = "holes",
+    srcs = ["Incompat/Holes.lean"],
+)
+
+lean_proof_test(
+    name = "holes_proofs",
+    target_compatible_with = ["@platforms//:incompatible"],
+    deps = [":holes"],
+)
