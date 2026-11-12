@@ -14,11 +14,12 @@ your network needs.
 | What | Command | Expected |
 |---|---|---|
 | Rules, examples, version selection | `bazel test //...` | passes |
-| Proof check catches holes | `bazel test //tests/negative:holes_proofs` | **fails**, naming `sorryAx` and `myAxiom` |
+| Proof check catches holes | `bazel test //tests/negative:holes_proofs` | **fails**, naming `sorryAx`, `myAxiom`, `privateCheat`, `missingTheorem` and `notATheorem` |
+| Warnings as errors | `bazel build //tests/negative:warns` | **fails** on an unused variable |
 | Use from another module | `cd e2e/smoke && bazel test //...` | passes |
 | Unknown Lean version | `cd e2e/bad_version && bazel build //...` | **fails** with a clear message |
 
-CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs all four on Linux
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs all of them on Linux
 (x86_64, aarch64), macOS (arm64, x86_64) and Windows, each with Bazel 7.4.1, 8.x and
 9.x.
 

@@ -29,14 +29,16 @@ _FORWARDED_TO_CHECK = [
     "target_compatible_with",
 ]
 
-def lean_proof_test(name, deps, allowed_axioms = None, modules = None, allow_empty = False, **kwargs):
+def lean_proof_test(name, deps, allowed_axioms = None, modules = None, required_theorems = None, allow_empty = False, **kwargs):
     """A test that fails unless proofs are complete and use only allowed axioms.
 
     Lean only warns about `sorry` when it compiles a module, so a
     `lean_library` with holes in its proofs still builds. This test is what
     makes a proof count: every declaration of the checked modules must be free
-    of `sorry` (`sorryAx`) and depend only on allowed axioms. On failure the
-    output names each offending declaration and the axioms it uses.
+    of `sorry` (`sorryAx`) and depend only on allowed axioms, private
+    declarations included, and every theorem in `required_theorems` must
+    exist. On failure the output names each offending declaration and the
+    axioms it uses, and each missing theorem.
 
     The check runs when the test is built, so `bazel build //...` already
     fails on a bad proof; `bazel test` reports it as a failed test.
@@ -49,6 +51,9 @@ def lean_proof_test(name, deps, allowed_axioms = None, modules = None, allow_emp
         Pass `[]` to allow none.
       modules: Module names to check. Default: every module compiled
         directly by `deps` (not their transitive deps).
+      required_theorems: Full names of theorems that must exist, e.g. the
+        ones your docs call proved. Deleting or renaming one, or turning it
+        into a `def`, fails the test.
       allow_empty: Pass when the checked modules may declare nothing;
         otherwise an empty check fails, as it usually means a wrong `modules`.
       **kwargs: Common test attributes (`tags`, `size`, `visibility`, ...).
@@ -60,6 +65,8 @@ def lean_proof_test(name, deps, allowed_axioms = None, modules = None, allow_emp
         check_kwargs["allowed_axioms"] = allowed_axioms
     if modules != None:
         check_kwargs["modules"] = modules
+    if required_theorems != None:
+        check_kwargs["required_theorems"] = required_theorems
 
     # The check is a target of its own, and `//...` expands to it too. So the
     # attributes that decide whether and where a target builds must reach it:

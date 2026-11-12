@@ -1,7 +1,9 @@
 load("//lean:defs.bzl", "lean_library", "lean_proof_test")
 
 # Must FAIL: `bazel test //tests/negative:holes_proofs` is expected to break
-# the build. CI runs it and asserts the failure (see .github/workflows/ci.yml).
+# the build. CI runs it and asserts the failure (see .github/workflows/ci.yml):
+# it must name the sorry, the axiom, the private sorry and both missing
+# required theorems.
 lean_library(
     name = "holes",
     srcs = ["Neg/Holes.lean"],
@@ -10,6 +12,19 @@ lean_library(
 
 lean_proof_test(
     name = "holes_proofs",
+    required_theorems = [
+        "fine",
+        "missingTheorem",
+        "notATheorem",
+    ],
     deps = [":holes"],
     tags = ["manual"],
+)
+
+# Must FAIL: `bazel build //tests/negative:warns` breaks on a warning.
+lean_library(
+    name = "warns",
+    srcs = ["Neg/Warns.lean"],
+    tags = ["manual"],
+    warnings_as_errors = True,
 )

@@ -128,6 +128,9 @@ def _lean_library_impl(ctx):
         args.add("-o", olean)
         args.add("-i", ilean)
         args.add("-c", c_file)
+        if ctx.attr.warnings_as_errors:
+            # What `lake build --wfail` enforces: a warning fails the build.
+            args.add("-DwarningAsError=true")
         args.add(src)
         ctx.actions.run(
             executable = tc.lean,
@@ -173,6 +176,12 @@ lean_library = rule(
             doc = "Directory, relative to the package, that module names start from. " +
                   "Default: the package itself, so `Gala/Eval.lean` is module `Gala.Eval`; " +
                   "with `strip_prefix = \"src\"`, `src/Gala/Eval.lean` is `Gala.Eval` too.",
+        ),
+        "warnings_as_errors": attr.bool(
+            default = False,
+            doc = "Fail the build on any Lean warning (an unused variable, a deprecated " +
+                  "lemma, `sorry`), like `lake build --wfail`. Passes " +
+                  "`-DwarningAsError=true` to `lean`.",
         ),
     },
     toolchains = [LEAN_TOOLCHAIN_TYPE],
@@ -247,6 +256,7 @@ open Lean Elab Command
 
 def rulesLeanAllowedAxioms : List Name := [{allowed}].map String.toName
 def rulesLeanTargetModules : List Name := [{modules}].map String.toName
+def rulesLeanRequiredTheorems : List Name := [{required}].map String.toName
 
 run_cmd do
   let env ← getEnv
@@ -256,18 +266,23 @@ run_cmd do
     let some idx := env.getModuleIdxFor? name | continue
     let mod := env.header.moduleNames[idx.toNat]!
     unless rulesLeanTargetModules.contains mod do continue
-    if name.isInternal then continue
+    -- Private declarations count: an unused private lemma proved with sorry is
+    -- still a hole. Other internal names are compiler auxiliaries.
+    if name.isInternal && !isPrivateName name then continue
     checked := checked + 1
     let axioms ← liftCoreM (Lean.collectAxioms name)
     let bad := axioms.filter (fun a => !rulesLeanAllowedAxioms.contains a)
     unless bad.isEmpty do
       failures := failures.push s!"  {{name}} ({{mod}}) depends on {{bad.toList}}"
+  for name in rulesLeanRequiredTheorems do
+    unless (env.find? name).any (·.isTheorem) do
+      failures := failures.push s!"  {{name}} is required but is not a theorem in the checked modules or their imports"
   if failures.isEmpty then
     if checked == 0 && !{allow_empty} then
       throwError "lean_proof_test: no declarations found in {{rulesLeanTargetModules}}"
     logInfo m!"lean_proof_test: {{checked}} declarations use only {{rulesLeanAllowedAxioms}}"
   else
-    throwError m!"lean_proof_test: declarations depend on sorry or on axioms that are not allowed:\\n{{"\\n".intercalate failures.toList}}"
+    throwError m!"lean_proof_test failed:\\n{{"\\n".intercalate failures.toList}}"
 """
 
 def _quote_list(items):
@@ -295,6 +310,7 @@ def _lean_proof_check_impl(ctx):
         allowed = _quote_list(ctx.attr.allowed_axioms),
         modules = _quote_list(modules),
         allow_empty = "true" if ctx.attr.allow_empty else "false",
+        required = _quote_list(ctx.attr.required_theorems),
     ))
     setup = _write_setup(ctx, prefix + "RulesLeanProofCheck.setup.json", "RulesLeanProofCheck", imports)
     stamp = ctx.actions.declare_file(prefix + "RulesLeanProofCheck.olean")
@@ -315,6 +331,7 @@ lean_proof_check = rule(
         "allowed_axioms": attr.string_list(default = _DEFAULT_ALLOWED_AXIOMS),
         "deps": attr.label_list(providers = [LeanInfo], mandatory = True),
         "modules": attr.string_list(doc = "Modules to check. Default: every module the deps compile directly."),
+        "required_theorems": attr.string_list(doc = "Theorems that must exist, by full name."),
     },
     toolchains = [LEAN_TOOLCHAIN_TYPE],
 )

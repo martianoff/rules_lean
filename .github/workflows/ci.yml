@@ -90,9 +90,22 @@ jobs:
             echo "::error:://tests/negative:holes_proofs passed but must fail"
             exit 1
           fi
-          for want in sorryAx myAxiom; do
+          for want in sorryAx myAxiom privateCheat missingTheorem notATheorem; do
             grep -q "$want" negative.log || { echo "::error::output does not name $want"; exit 1; }
           done
+
+      - name: warnings_as_errors fails on a warning
+        run: |
+          set +e
+          bazel build //tests/negative:warns > warns.log 2>&1
+          rc=$?
+          set -e
+          cat warns.log
+          if [ "$rc" -eq 0 ]; then
+            echo "::error:://tests/negative:warns built but must fail"
+            exit 1
+          fi
+          grep -q "is not explicitly referenced" warns.log || { echo "::error::output does not name the unused variable"; exit 1; }
 
       - name: e2e/smoke (rules_lean used from another module)
         working-directory: e2e/smoke

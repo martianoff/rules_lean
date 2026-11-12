@@ -8,10 +8,13 @@ lean_library(
         "Multi/B.lean",
         "Multi/C.lean",
     ],
+    # A warning anywhere in these modules fails the build.
+    warnings_as_errors = True,
 )
 
 lean_proof_test(
     name = "multi_proofs",
+    required_theorems = ["Multi.c_eq"],
     deps = [":multi"],
 )
 

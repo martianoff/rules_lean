@@ -143,6 +143,7 @@ Compiles Lean 4 modules, one action per module.
 | `srcs` | list of `.lean` labels | required | Sources, **in dependency order**: a file may import the files listed before it in `srcs`, and any module of `deps`. |
 | `deps` | list of `lean_library` labels | `[]` | Libraries whose modules these sources import. Transitive: a module may import any module of any library reachable through `deps`. |
 | `strip_prefix` | string | `""` | Directory, relative to the package, that module names start from. See [Module names](#module-names). |
+| `warnings_as_errors` | bool | `False` | Fail on any Lean warning (an unused variable, a deprecated lemma, `sorry`), like `lake build --wfail`. |
 
 Default outputs: the `.olean` and `.ilean` files. Output group `objects`: the native
 objects. Provides [`LeanInfo`](#leaninfo).
@@ -168,24 +169,28 @@ a non-zero code: return one from `def main : IO UInt32`, or let `main` throw.
 
 ### `lean_proof_test`
 
-A test that fails unless every declaration of the checked modules is free of `sorry`
-and depends only on allowed axioms.
+A test that fails unless every declaration of the checked modules, private ones
+included, is free of `sorry` and depends only on allowed axioms, and every required
+theorem exists.
 
 | Argument | Type | Default | Description |
 |---|---|---|---|
 | `deps` | list of `lean_library` labels | required | Libraries whose modules are checked. |
 | `allowed_axioms` | list of strings | `["propext", "Quot.sound", "Classical.choice"]` | Axioms declarations may depend on. `[]` allows none. |
 | `modules` | list of strings | every module compiled directly by `deps` | Module names to check. |
+| `required_theorems` | list of strings | `[]` | Full names of theorems that must exist, such as the ones your docs call proved. A missing one, or a `def` of that name, fails the test. |
 | `allow_empty` | bool | `False` | Don't fail when the checked modules declare nothing. |
 | `**kwargs` | | | Common test attributes (`tags`, `size`, `visibility`, ...). `tags`, `target_compatible_with`, `exec_compatible_with`, `exec_properties`, `features`, `compatible_with` and `restricted_to` also apply to the check, so a test that is `manual` or incompatible is never checked by `bazel build //...`. |
 
 The check is a build action, so `bazel build //...` already fails on an incomplete
-proof. The error names each offending declaration and what it depends on:
+proof. The error names each offending declaration and what it depends on, and each
+missing theorem:
 
 ```text
-error: lean_proof_test: declarations depend on sorry or on axioms that are not allowed:
+error: lean_proof_test failed:
   cheat (Neg.Holes) depends on [sorryAx]
   usesAxiom (Neg.Holes) depends on [myAxiom]
+  missingTheorem is required but is not a theorem in the checked modules or their imports
 ```
 
 [`tests/negative`](tests/negative) is a target that must fail this way; CI checks that
