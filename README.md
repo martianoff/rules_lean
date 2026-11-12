@@ -40,7 +40,7 @@ common --registry=https://bcr.bazel.build
 
 ```starlark
 # MODULE.bazel
-bazel_dep(name = "rules_lean", version = "0.1.0")
+bazel_dep(name = "rules_lean", version = "0.1.1")
 
 # Optional: pick the Lean version. Without it you get this release's default.
 lean = use_extension("@rules_lean//lean:extensions.bzl", "lean")
